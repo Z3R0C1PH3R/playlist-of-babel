@@ -27,6 +27,9 @@
     let animFrameId = null, progressTimer = null, playStartTime = 0;
     let portalAnimId = null, recTimerInterval = null;
 
+    // Mutation history
+    let mutationHistory = [];  // [{label, address}]
+
     // Region selector state
     let regionAudioBuffer = null;   // full decoded AudioBuffer from record/upload
     let regionStart = 0;            // in seconds
@@ -616,15 +619,149 @@
         return div;
     }
 
+    // ─── Audio Mutations ─────────────────────────────────────
+    const MUTATIONS = [
+        {
+            name: 'Reversed',
+            fn: bytes => { const out = new Uint8Array(NUM_SAMPLES); for (let i = 0; i < NUM_SAMPLES; i++) out[i] = bytes[NUM_SAMPLES - 1 - i]; return out; }
+        },
+        {
+            name: 'Inverted',
+            fn: bytes => { const out = new Uint8Array(NUM_SAMPLES); for (let i = 0; i < NUM_SAMPLES; i++) out[i] = 255 - bytes[i]; return out; }
+        },
+        {
+            name: 'Louder',
+            fn: bytes => {
+                const out = new Uint8Array(NUM_SAMPLES);
+                for (let i = 0; i < NUM_SAMPLES; i++) {
+                    const v = (bytes[i] - 128) * 1.8;
+                    out[i] = Math.max(0, Math.min(255, Math.round(v + 128)));
+                }
+                return out;
+            }
+        },
+        {
+            name: 'Quieter',
+            fn: bytes => {
+                const out = new Uint8Array(NUM_SAMPLES);
+                for (let i = 0; i < NUM_SAMPLES; i++) {
+                    const v = (bytes[i] - 128) * 0.35;
+                    out[i] = Math.round(v + 128);
+                }
+                return out;
+            }
+        },
+        {
+            name: 'Half-speed',
+            fn: bytes => {
+                const out = new Uint8Array(NUM_SAMPLES);
+                for (let i = 0; i < NUM_SAMPLES; i++) out[i] = bytes[Math.floor(i / 2)];
+                return out;
+            }
+        },
+        {
+            name: 'Double-speed',
+            fn: bytes => {
+                const out = new Uint8Array(NUM_SAMPLES);
+                const half = Math.floor(NUM_SAMPLES / 2);
+                for (let i = 0; i < half; i++) out[i] = bytes[i * 2];
+                for (let i = half; i < NUM_SAMPLES; i++) out[i] = 128; // silence
+                return out;
+            }
+        },
+        {
+            name: 'Bit-crushed',
+            fn: bytes => { const out = new Uint8Array(NUM_SAMPLES); for (let i = 0; i < NUM_SAMPLES; i++) out[i] = bytes[i] & 0xE0; return out; }
+        },
+        {
+            name: 'Echo',
+            fn: bytes => {
+                const out = new Uint8Array(NUM_SAMPLES);
+                const delay = 1600; // 200ms at 8kHz
+                for (let i = 0; i < NUM_SAMPLES; i++) {
+                    const dry = bytes[i] - 128;
+                    const wet = i >= delay ? (bytes[i - delay] - 128) * 0.45 : 0;
+                    out[i] = Math.max(0, Math.min(255, Math.round(dry + wet + 128)));
+                }
+                return out;
+            }
+        },
+    ];
+
+    // Seeded RNG so the same address always produces the same corruption pattern
+    function seededRNG(address, pct) {
+        let h = 0x811c9dc5;
+        const tag = address.substring(0, 32) + ':' + pct;
+        for (let i = 0; i < tag.length; i++) {
+            h ^= tag.charCodeAt(i); h = Math.imul(h, 0x01000193);
+        }
+        return function() {
+            h ^= h << 13; h ^= h >> 17; h ^= h << 5;
+            return (h >>> 0) / 0x100000000;
+        };
+    }
+
+    function makeCorruptionMutation(pct) {
+        return {
+            name: pct + '% match',
+            fn: (bytes, address) => {
+                const out = new Uint8Array(NUM_SAMPLES);
+                const rng = seededRNG(address, pct);
+                const corruptFraction = 1 - pct / 100;
+                for (let i = 0; i < NUM_SAMPLES; i++) {
+                    if (rng() < corruptFraction) {
+                        // Replace with random byte (seeded)
+                        out[i] = Math.floor(rng() * 256);
+                    } else {
+                        out[i] = bytes[i];
+                    }
+                }
+                return out;
+            }
+        };
+    }
+
+    const SIMILARITY_MUTATIONS = [95, 90, 80, 70, 50, 25].map(makeCorruptionMutation);
+
     function generateNeighbors(address) {
         const container = document.getElementById('neighbor-list');
         if (!container) return; container.innerHTML = '';
-        for (let i = 0; i < 8; i++) {
-            const pos = Math.floor((i / 8) * address.length);
-            const chars = address.split('');
-            chars[pos] = B64[(B64.indexOf(chars[pos]) + 1) % 64];
-            container.appendChild(createTrackItem(chars.join('')));
-        }
+        const bytes = base64urlToBytes(address);
+        MUTATIONS.forEach(mut => {
+            const mutatedBytes = mut.fn(bytes, address);
+            const mutAddr = bytesToBase64url(mutatedBytes);
+            container.appendChild(createVariationItem(mutAddr, mut.name, mutatedBytes));
+        });
+        SIMILARITY_MUTATIONS.forEach(mut => {
+            const mutatedBytes = mut.fn(bytes, address);
+            const mutAddr = bytesToBase64url(mutatedBytes);
+            container.appendChild(createVariationItem(mutAddr, mut.name, mutatedBytes));
+        });
+    }
+
+    function createVariationItem(addr, label, bytes) {
+        const div = document.createElement('div');
+        div.className = 'track-item'; div.dataset.address = addr;
+
+        const playBtn = document.createElement('button');
+        playBtn.className = 'track-play-btn'; playBtn.textContent = '▶';
+        playBtn.addEventListener('click', e => { e.stopPropagation(); navigateVariation(addr, label); });
+
+        const tag = document.createElement('span');
+        tag.className = 'variation-label';
+        if (label.includes('%')) tag.classList.add('similarity');
+        tag.textContent = label;
+
+        const addrSpan = document.createElement('span');
+        addrSpan.className = 'track-address'; addrSpan.textContent = truncAddr(addr, 50);
+
+        const miniCanvas = document.createElement('canvas');
+        miniCanvas.className = 'track-mini-wave'; miniCanvas.width = 60; miniCanvas.height = 22;
+        drawMiniWaveform(miniCanvas, bytes);
+
+        div.appendChild(playBtn); div.appendChild(tag); div.appendChild(addrSpan); div.appendChild(miniCanvas);
+        div.addEventListener('click', () => navigateVariation(addr, label));
+        return div;
     }
 
     // ─── Player Bar ──────────────────────────────────────────
@@ -642,6 +779,13 @@
 
     // ─── Router ──────────────────────────────────────────────
     function navigateToTrack(address) {
+        mutationHistory = [];
+        currentAddress = address;
+        window.location.hash = '#/play/' + address;
+    }
+
+    function navigateVariation(address, label) {
+        mutationHistory.push({ label: label, address: currentAddress });
         currentAddress = address;
         window.location.hash = '#/play/' + address;
     }
@@ -725,6 +869,57 @@
         updateProgress(0); updatePlayButtons(false);
         playTrack(address);
         generateNeighbors(address);
+        renderMutationHistory();
+    }
+
+    function renderMutationHistory() {
+        const panel = document.getElementById('history-panel');
+        if (!panel) return;
+        if (mutationHistory.length === 0) {
+            panel.classList.add('hidden'); return;
+        }
+        panel.classList.remove('hidden');
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+
+        // Origin entry
+        const originLi = document.createElement('li');
+        originLi.className = 'history-entry history-origin';
+        originLi.innerHTML = '<span class="history-label">Origin</span>' +
+            '<span class="history-addr">' + truncAddr(mutationHistory[0].address, 40) + '</span>';
+        originLi.addEventListener('click', () => {
+            const addr = mutationHistory[0].address;
+            mutationHistory = [];
+            currentAddress = addr;
+            window.location.hash = '#/play/' + addr;
+        });
+        list.appendChild(originLi);
+
+        // Each mutation step
+        mutationHistory.forEach((step, idx) => {
+            const li = document.createElement('li');
+            li.className = 'history-entry';
+            const isSimilarity = step.label.includes('%');
+            li.innerHTML = '<span class="history-arrow">→</span>' +
+                '<span class="history-mutation' + (isSimilarity ? ' similarity' : '') + '">' + step.label + '</span>';
+            if (idx < mutationHistory.length - 1) {
+                // Can click to go back to this intermediate step
+                const targetAddr = mutationHistory[idx + 1].address;
+                li.addEventListener('click', () => {
+                    mutationHistory = mutationHistory.slice(0, idx + 1);
+                    currentAddress = targetAddr;
+                    window.location.hash = '#/play/' + targetAddr;
+                });
+            }
+            list.appendChild(li);
+        });
+
+        // Current (final) entry
+        const curLi = document.createElement('li');
+        curLi.className = 'history-entry history-current';
+        curLi.innerHTML = '<span class="history-arrow">→</span>' +
+            '<span class="history-addr current">' + truncAddr(currentAddress, 40) + '</span>';
+        list.appendChild(curLi);
     }
 
     // ─── Events ──────────────────────────────────────────────

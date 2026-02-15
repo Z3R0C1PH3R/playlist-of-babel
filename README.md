@@ -28,7 +28,7 @@ Every melody, every word in every language, every birdsong, thunderclap, and not
 - **Play** — Real-time waveform and spectrum visualization with Web Audio API.
 - **Download** — Export any track as a WAV file.
 - **Share** — Copy a track's address or direct link.
-- **Adjacent Tracks** — Explore sounds that differ by a single character.
+- **Variations** — Hear recognizable mutations of any track: reversed, louder, quieter, inverted, bit-crushed, and more.
 
 ## Technical Details
 
@@ -58,7 +58,7 @@ Pure frontend. No build step, no frameworks, no dependencies, no server.
 ## Run Locally
 
 ```
-git clone https://github.com/YOUR_USERNAME/playlist-of-babel.git
+git clone https://github.com/Z3R0C1PH3R/playlist-of-babel.git
 cd playlist-of-babel
 ```
 
