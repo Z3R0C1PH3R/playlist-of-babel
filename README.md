@@ -102,4 +102,3 @@ This is a static site — deploy anywhere:
 ## License
 
 [MIT](LICENSE)
-# playlist-of-babel

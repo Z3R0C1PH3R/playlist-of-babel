@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist of Babel</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♫</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+
+        <!-- ═══ Navigation (hidden on portal) ═══ -->
+        <nav id="main-nav" class="nav-hidden">
+            <a href="#/" class="nav-logo">♫ Playlist of Babel</a>
+            <div class="nav-links">
+                <a href="#/browse" data-view="browse">Browse</a>
+                <a href="#/search" data-view="search">Search</a>
+                <a href="#/" data-action="random">Random</a>
+                <a href="#/about" data-view="about">About</a>
+            </div>
+            <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </nav>
+
+        <!-- ═══ Main Content ═══ -->
+        <main id="main-content">
+
+            <!-- ── Portal / Home ── -->
+            <section id="view-portal" class="view active">
+                <div class="portal-container">
+                    <canvas id="portal-wave" width="800" height="200"></canvas>
+                    <div class="portal-content">
+                        <h1 class="portal-title">Playlist of Babel</h1>
+                        <p class="portal-subtitle">
+                            Every possible one-second sound that could ever exist.
+                        </p>
+                        <div class="portal-stats">
+                            <span class="stat-big">2<sup>64,000</sup> tracks</span>
+                        </div>
+                        <div class="portal-buttons">
+                            <a href="#/browse" class="btn btn-accent">Browse</a>
+                            <a href="#/search" class="btn btn-accent">Search</a>
+                            <a href="#/" class="btn btn-accent" data-action="random">Random</a>
+                            <a href="#/about" class="btn btn-ghost">About</a>
+                        </div>
+                        <p class="portal-quote">
+                            "By this art you may contemplate the variation of the 256 amplitudes"
+                        </p>
+                        <div class="portal-credit">
+                            <a href="https://z3r0c1ph3r.com" target="_blank" rel="noopener">Z3R0C1PH3R</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Browse ── -->
+            <section id="view-browse" class="view">
+                <div class="section-container">
+                    <div class="section-header">
+                        <h2>Browse the Library</h2>
+                        <p>Select characters to go deeper. Each character narrows the space by 64×. A "playlist" is all tracks sharing that prefix.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="prefix-display">
+                            <label>Current Section</label>
+                            <div class="prefix-bar">
+                                <div class="prefix-chars" id="prefix-chars">
+                                    <span class="prefix-root">∅ Root</span>
+                                </div>
+                                <div class="prefix-actions">
+                                    <button class="btn btn-sm" id="btn-back">← Back</button>
+                                    <button class="btn btn-sm" id="btn-reset">Reset</button>
+                                </div>
+                            </div>
+                            <div class="prefix-info" id="prefix-info">
+                                You are at the root. All 2<sup>64,000</sup> tracks are below you.
+                            </div>
+                        </div>
+
+                        <div class="char-grid-wrapper">
+                            <label>Select next character:</label>
+                            <div class="char-grid" id="char-grid"></div>
+                        </div>
+
+                        <div class="prefix-input-row">
+                            <label for="prefix-input">Or type a prefix directly:</label>
+                            <div class="input-group">
+                                <input type="text" id="prefix-input" placeholder="e.g. ABCxyz..." spellcheck="false" autocomplete="off">
+                                <button class="btn btn-primary" id="btn-go-prefix">Go</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="tracks-header">
+                            <h3>Tracks in this Section</h3>
+                            <div class="tracks-actions">
+                                <button class="btn btn-sm" id="btn-regenerate">↻ Regenerate</button>
+                                <button class="btn btn-primary btn-sm" id="btn-play-random-section">▶ Play Random</button>
+                            </div>
+                        </div>
+                        <div class="track-list" id="track-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Search ── -->
+            <section id="view-search" class="view">
+                <div class="section-container">
+                    <div class="section-header">
+                        <h2>Search the Library</h2>
+                        <p>Every sound exists here at a precise address. Record, upload, or type an address to find it.</p>
+                    </div>
+
+                    <div class="search-grid">
+                        <div class="search-card">
+                            <div class="search-card-icon">🎤</div>
+                            <h3>Record Audio</h3>
+                            <p>Record any length, then select a 1-second region to locate.</p>
+                            <button class="btn btn-primary" id="btn-record">
+                                <span class="record-dot"></span>
+                                Start Recording
+                            </button>
+                            <div class="recording-status hidden" id="recording-status">
+                                <div class="recording-indicator">
+                                    <span class="rec-pulse"></span> Recording… <span id="rec-timer">0.0s</span>
+                                </div>
+                                <canvas id="rec-wave" width="300" height="50"></canvas>
+                                <button class="btn btn-stop" id="btn-stop-record">⏹ Stop Recording</button>
+                            </div>
+                        </div>
+
+                        <div class="search-card">
+                            <div class="search-card-icon">📁</div>
+                            <h3>Upload Audio</h3>
+                            <p>Upload any audio file, then pick a 1-second region to search.</p>
+                            <input type="file" id="file-upload" accept="audio/*" class="sr-only">
+                            <label for="file-upload" class="btn btn-primary upload-label">Choose File</label>
+                            <div class="upload-status hidden" id="upload-status">Processing…</div>
+                        </div>
+
+                        <div class="search-card search-card-wide">
+                            <div class="search-card-icon">📝</div>
+                            <h3>Enter Address Directly</h3>
+                            <p>Paste a track address (10,667 base64url characters).</p>
+                            <div class="address-input-group">
+                                <textarea id="address-input" rows="3" placeholder="Paste a track address here…" spellcheck="false"></textarea>
+                                <button class="btn btn-primary" id="btn-go-address">Go →</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Region Selector ── -->
+            <section id="view-region" class="view">
+                <div class="section-container">
+                    <div class="card region-card">
+                        <h3>Select a 1-second region</h3>
+                        <p class="muted">Drag the highlighted area or its edges to choose which second to search.</p>
+                        <div class="region-wrap" id="region-wrap">
+                            <canvas id="region-waveform" width="800" height="140"></canvas>
+                            <div class="region-overlay-left" id="region-overlay-left"></div>
+                            <div class="region-overlay-right" id="region-overlay-right"></div>
+                            <div class="region-selector" id="region-selector">
+                                <div class="region-handle region-handle-left" id="region-handle-left"></div>
+                                <div class="region-handle region-handle-right" id="region-handle-right"></div>
+                            </div>
+                        </div>
+                        <div class="region-info">
+                            <span id="region-time">0.00s – 1.00s</span>
+                            <span id="region-duration-label"></span>
+                        </div>
+                        <div class="region-actions">
+                            <button class="btn btn-primary" id="btn-use-region">Search this region →</button>
+                            <button class="btn btn-ghost" id="btn-play-region">▶ Preview</button>
+                            <button class="btn btn-ghost" id="btn-cancel-region">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Play / Track View ── -->
+            <section id="view-play" class="view">
+                <div class="section-container">
+                    <div class="card player-card">
+                        <div class="player-viz">
+                            <canvas id="play-waveform" width="800" height="160"></canvas>
+                            <canvas id="play-spectrum" width="800" height="50"></canvas>
+                        </div>
+                        <div class="player-controls">
+                            <button class="btn-play-large" id="btn-play-main">
+                                <span class="play-icon">▶</span>
+                            </button>
+                            <div class="player-progress-wrap">
+                                <div class="player-progress" id="player-progress">
+                                    <div class="player-progress-fill" id="player-progress-fill"></div>
+                                </div>
+                                <div class="player-time">
+                                    <span id="player-time-current">0:00</span>
+                                    <span id="player-time-total">/ 1:00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="player-address">
+                            <label>Track Address <span class="address-len" id="address-len"></span></label>
+                            <div class="address-box" id="address-box"></div>
+                            <div class="address-actions">
+                                <button class="btn btn-sm" id="btn-copy-address">📋 Copy</button>
+                                <button class="btn btn-sm" id="btn-copy-link">🔗 Link</button>
+                                <button class="btn btn-sm" id="btn-browse-section">📂 Browse</button>
+                                <button class="btn btn-sm" id="btn-download">💾 WAV</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Adjacent Tracks</h3>
+                        <p class="muted">Sounds that differ by a single character.</p>
+                        <div class="track-list" id="neighbor-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── About ── -->
+            <section id="view-about" class="view">
+                <div class="section-container about-content">
+                    <h2>About</h2>
+
+                    <div class="about-block">
+                        <h3>The Concept</h3>
+                        <p>
+                            Inspired by Borges' <em>"The Library of Babel"</em> (1941)
+                            and <a href="https://libraryofbabel.info/" target="_blank" rel="noopener">libraryofbabel.info</a>,
+                            the Playlist of Babel is the auditory equivalent — a library containing
+                            every possible one-second sound.
+                        </p>
+                        <p>
+                            Every melody. Every word in every language. Every birdsong, thunderclap, and note
+                            of every instrument. The opening second of every song ever recorded, and every song
+                            that could be. They all exist here at a unique address.
+                        </p>
+                        <p>
+                            Most are noise — meaningless static, just as most pages in the Library of Babel
+                            are gibberish. But somewhere in the vastness is every beautiful sound that has ever
+                            been or could ever be.
+                        </p>
+                    </div>
+
+                    <div class="about-block">
+                        <h3>How It Works</h3>
+                        <p>
+                            Each track is 1 second of <strong>8-bit mono audio at 8,000 Hz</strong>.
+                            That's <strong>8,000 bytes</strong> — 8,000 amplitude values between 0 and 255,
+                            totaling <strong>64,000 bits</strong>.
+                        </p>
+                        <p>
+                            The address of a track is the <strong>base64url encoding</strong> of its raw audio
+                            data — a unique 10,667-character string. No server, no database. Audio is generated
+                            directly from the address in your browser.
+                        </p>
+                        <p>
+                            Every combination of 64,000 bits is a valid track. Every track has exactly one
+                            address. Every address maps to exactly one track.
+                            <strong>2<sup>64,000</sup></strong> total tracks.
+                        </p>
+                    </div>
+
+                    <div class="about-block">
+                        <h3>By the Numbers</h3>
+                        <table class="stats-table">
+                            <tr><td>Sample Rate</td><td>8,000 Hz</td></tr>
+                            <tr><td>Bit Depth</td><td>8-bit unsigned</td></tr>
+                            <tr><td>Channels</td><td>Mono</td></tr>
+                            <tr><td>Duration</td><td>1 second</td></tr>
+                            <tr><td>Bytes per Track</td><td>8,000</td></tr>
+                            <tr><td>Bits per Track</td><td>64,000</td></tr>
+                            <tr><td>Address Length</td><td>10,667 chars</td></tr>
+                            <tr><td>Address Alphabet</td><td>A–Z, a–z, 0–9, -, _ (64 chars)</td></tr>
+                            <tr><td>Total Tracks</td><td>2<sup>64,000</sup></td></tr>
+                            <tr><td>Frequency Range</td><td>0 – 4,000 Hz</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="about-block">
+                        <h3>Browsing & Search</h3>
+                        <p>
+                            <strong>Browse</strong> — Navigate by choosing prefix characters. Each narrows the
+                            space by 64×. A "playlist" is all tracks sharing a prefix.
+                        </p>
+                        <p>
+                            <strong>Search</strong> — Record audio or upload a file, select any 1-second region,
+                            and it gets resampled to 8 kHz, quantized to 8-bit, and encoded to its exact address.
+                        </p>
+                        <p>
+                            <strong>Random</strong> — Pull a random address and hear what the void sounds like.
+                        </p>
+                    </div>
+
+                    <div class="about-block">
+                        <blockquote>
+                            "The Library is unlimited but periodic. If an eternal traveler should journey in
+                            any direction, he would find after untold centuries that the same volumes are
+                            repeated in the same disorder — which, repeated, becomes order: the Order."
+                            <cite>— Borges</cite>
+                        </blockquote>
+                    </div>
+
+                    <div class="about-block">
+                        <h3>Credits</h3>
+                        <ul>
+                            <li>Borges — <em>"The Library of Babel"</em> (1941)</li>
+                            <li>Jonathan Basile — <a href="https://libraryofbabel.info/" target="_blank" rel="noopener">libraryofbabel.info</a></li>
+                            <li>Built by <a href="https://z3r0c1ph3r.com" target="_blank" rel="noopener">Z3R0C1PH3R</a></li>
+                            <li>No server. No backend. Everything runs in your browser.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ═══ Bottom Player Bar ═══ -->
+        <div id="player-bar" class="player-bar hidden">
+            <canvas id="bar-viz" width="120" height="40"></canvas>
+            <button class="bar-play-btn" id="bar-play-btn">▶</button>
+            <div class="bar-info">
+                <div class="bar-address" id="bar-address">No track loaded</div>
+                <div class="bar-progress">
+                    <div class="bar-progress-fill" id="bar-progress-fill"></div>
+                </div>
+            </div>
+            <button class="bar-view-btn" id="bar-view-btn" title="View full track">↗</button>
+        </div>
+
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

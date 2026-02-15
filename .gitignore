@@ -1,0 +1,29 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+
+# Node (in case someone runs npx serve)
+node_modules/
+package-lock.json
+
+# Python (in case someone uses python http.server)
+__pycache__/
+*.pyc
+
+# Misc
+*.bak
+*.tmp
+*.orig
